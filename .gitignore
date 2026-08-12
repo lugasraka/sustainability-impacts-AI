@@ -1,0 +1,25 @@
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+
+# Local environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Tooling and editor files
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+
+# Operating-system files
+.DS_Store
+Thumbs.db

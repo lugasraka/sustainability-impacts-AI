@@ -1,0 +1,4 @@
+task,model,accuracy,energy_kwh_per_1000_requests,grid_gco2e_per_kwh,direct_water_ml_per_1000_requests,indirect_water_ml_per_1000_requests
+product review sentiment,large api llm,0.97,32.5,450,1400,7500
+product review sentiment,fine-tuned 8b llm,0.97,6.8,450,300,1600
+product review sentiment,tinyml on device,0.88,0.04,450,8,12

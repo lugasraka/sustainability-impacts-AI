@@ -1,0 +1,3 @@
+scenario,kind,direction,baseline_tco2e_per_year,efficiency_pct,adoption_pct,ai_emissions_tco2e_per_year,rebound_pct,unc_baseline_pct,unc_efficiency_pct,unc_adoption_pct,unc_ai_pct,unc_rebound_pct
+solar forecasting,mitigation,-1,1000000,15,50,100,0,20,30,20,50,50
+fossil-fuel extraction optimization,emissions-increasing,1,2000000,5,50,100,0,20,30,20,50,50
