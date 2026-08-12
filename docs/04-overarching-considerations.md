@@ -4,13 +4,13 @@
 
 ## What this section is about
 
-The lecture turns from individual impacts to the quality of the stories and estimates used to describe them. It challenges both optimistic narratives about AI-for-climate and simplistic comparisons between AI's costs and its possible benefits.
+This section examines the quality of the stories and estimates used to describe individual impacts. It challenges optimistic narratives about AI-for-climate and simplistic comparisons between AI's costs and its possible benefits.
 
 ## The GenAI fallacy
 
 The lecture describes a "GenAI fallacy": using AI-for-climate as a justification for the energy consumption of large models. Climate applications are presented as a welcome narrative for large-model expansion, even though many climate-relevant applications do not require large generative models.
 
-The more careful position is:
+Choose a model for the task, then demonstrate its climate value:
 
 - large models may be useful for some tasks;
 - many climate tasks can use smaller, specialized, or conventional models;
@@ -37,15 +37,15 @@ This makes a single net number difficult to interpret. Before comparing two esti
 - baseline and adoption assumptions;
 - units and treatment of uncertainty.
 
-## "Is AI's energy use worth the climate benefits?" is incomplete
+## Compare a specific intervention with its alternative
 
-The lecture calls this question ill-posed when it compares a known or estimated energy cost with a broad, potential benefit without specifying the counterfactual. A better assessment asks whether a particular intervention produces an additional net benefit compared with the best non-AI alternative, after computing and system effects are included.
+The lecture rejects a comparison between a known or estimated energy cost and a broad, potential benefit when the counterfactual is missing. Assess whether a particular intervention produces an additional net benefit compared with the best non-AI alternative, after computing and system effects are included.
 
-This does not mean that AI-for-climate is impossible or unhelpful. It means that the case must be made application by application, with evidence that connects model output to a real-world outcome.
+AI-for-climate may be useful, but each case needs evidence that connects model output to a real-world outcome.
 
 ## Greening the grid is not sufficient
 
-Renewable electricity can reduce the carbon intensity of computation, but it does not solve unbounded demand growth or other resource and social impacts. The lecture connects this to the narrow path to net zero: the world needs rapid deployment of clean energy and major improvements in energy efficiency at the same time.
+Renewable electricity can reduce the carbon intensity of computation, but it does not solve unbounded demand growth or other resource and social impacts. The narrow path to net zero requires rapid deployment of clean energy and major improvements in energy efficiency at the same time.
 
 For AI, this means efficiency, demand management, and appropriate use matter alongside cleaner supply.
 

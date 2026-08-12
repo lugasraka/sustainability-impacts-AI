@@ -38,7 +38,7 @@ The lecture presents frugal AI as a way to make useful systems more sustainable,
 - Measure the layers around the model as well as the model itself: retrieval, agents, orchestration, repeated prompting, and unnecessary output length can add cost.
 - Track both performance and resource use. The slides name Code Carbon as one possible tool for estimating project energy and GHG impacts.
 
-Frugality is not the same as choosing the smallest model regardless of consequences. The relevant question is whether the system meets the task's quality, safety, latency, access, and reliability requirements with less resource use.
+A frugal system meets the task's quality, safety, latency, access, and reliability requirements with less resource use. Model size alone is not the criterion.
 
 ### Energy demand is also a grid and infrastructure question
 
@@ -56,7 +56,7 @@ Renewable electricity can reduce operational carbon intensity, but it does not e
 
 The lecture notes that computing chips use materials drawn from many elements and that some stocks are rapidly depleting. It then uses water as a case where direct and indirect use must be separated.
 
-The slides report, with cited sources and a stated scope, that:
+Within the stated scope, the slides report that:
 
 - water withdrawal, consumption, and discharge are different quantities;
 - direct data-center water use is currently less than 0.5% of U.S. water consumption in the cited comparison;

@@ -1,8 +1,8 @@
 # Sustainability Impacts of AI
 
-These are study notes for the Climate Change AI Summer School 2026 lecture **Sustainability Impacts of AI** by Nikola Milojevic-Dupont. They summarize the local lecture PDF and connect its main ideas to the optional pre-readings.
+These notes cover the Climate Change AI Summer School 2026 lecture **Sustainability Impacts of AI** by Nikola Milojevic-Dupont. They summarize the local lecture PDF and connect its main ideas to the optional pre-readings.
 
-The lecture's central message is that AI cannot be judged by model energy use alone. A useful assessment follows the whole lifecycle, distinguishes different kinds of applications, includes system-level effects, and makes assumptions and uncertainty visible.
+The lecture argues that model energy use alone is not enough. Assess an AI system across its lifecycle, distinguish application types, include system-level effects, and state assumptions and uncertainty.
 
 ## Reading route
 
@@ -27,7 +27,7 @@ The lecture's central message is that AI cannot be judged by model energy use al
 
 ## Four impact categories
 
-The opening callback (slide 3) presents four connected categories:
+Slide 3 groups the topic into four connected categories:
 
 1. **Impacts from computation and hardware** - electricity, cooling, hardware manufacturing, mining, transport, and disposal.
 2. **ML applications in climate-change mitigation** - applications intended to reduce emissions or improve adaptation and resilience.
@@ -36,7 +36,7 @@ The opening callback (slide 3) presents four connected categories:
 
 These categories can overlap. A climate application may have a useful operational effect while its deployment adds computing demand or causes a rebound effect.
 
-## Concepts to keep handy
+## Key concepts
 
 ### Lifecycle assessment
 
@@ -76,11 +76,11 @@ When reading a claim about AI and climate, ask:
 - Are the units, time horizon, location, and uncertainty stated?
 - Does the source disclose its method and possible incentives?
 
-The lecture repeatedly warns that an impressive potential reduction is not the same as a realized, additional, or net reduction.
+A potential reduction is not necessarily a realized, additional, or net reduction.
 
-## Synthesis
+## Working position
 
-The lecture does not reduce the topic to "AI is good" or "AI is bad." Its practical position is more demanding:
+The lecture takes a demanding position:
 
 - Use evidence-based lifecycle accounting.
 - Prefer small, task-specific, and frugal systems when they are sufficient.
@@ -111,4 +111,4 @@ Create a one-page Markdown table or small web app for one AI use case. Add one r
 - [Ketan Joshi 2026, The AI Climate Hoax](https://drive.google.com/file/d/12l1W4W25b-_ff6yFNJABkfal9_9oevxe/view).
 - [Ren and Luers 2025, The Real Story on AI's Water Use](https://spectrum.ieee.org/ai-water-usage).
 
-The Nature and Google Drive sources may require institutional or link access. Details attributed only to those sources should be checked against the original before being used as evidence.
+The Nature and Google Drive sources may require institutional access. Check details attributed only to those sources against the originals before using them as evidence.

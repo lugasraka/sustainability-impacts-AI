@@ -4,13 +4,13 @@
 
 ## What this section is about
 
-AI can affect climate through what it enables, not only through the resources needed to compute it. An application might improve forecasting, optimize a process, or support detection. Another application might increase extraction, production, consumption, or the speed of an emissions-intensive activity. The same technology label does not determine the outcome.
+AI affects climate both through the resources needed to compute it and through what applications enable. An application might improve forecasting, optimize a process, or support detection. Another application might increase extraction, production, consumption, or the speed of an emissions-intensive activity. The same technology label does not determine the outcome.
 
 ## Potential climate benefits need a counterfactual
 
 The lecture presents AI-for-climate as one of four impact categories and refers to estimates that AI applications could reduce global greenhouse-gas emissions by 4% in 2030, equivalent to 2.4 Gt CO2e. It immediately qualifies these figures as unreliable when they rely on undisclosed models, extrapolated interviews, or best-case adoption assumptions.
 
-The useful question is not simply "How much could AI save?" It is:
+Assess the claim by asking:
 
 > Compared with what alternative, under which adoption conditions, with what additional resource use, and with what unintended effects?
 
@@ -24,7 +24,7 @@ For a climate application, define:
 - the computing and hardware burden;
 - rebound, leakage, and failure modes.
 
-Examples named or implied in the lecture include solar forecasting, wildfire-risk classification, illegal-deforestation detection, and climate-disinformation detection. These are not automatically beneficial; the benefit depends on whether the result changes a real decision in a useful direction.
+Examples named or implied in the lecture include solar forecasting, wildfire-risk classification, illegal-deforestation detection, and climate-disinformation detection. Their climate value depends on whether the result changes a real decision in a useful direction.
 
 ## Applications can increase emissions
 
@@ -32,14 +32,14 @@ The slides explicitly call out AI used to accelerate emissions-intensive industr
 
 This is why an application-level metric such as "accuracy" or "operational efficiency" is insufficient. Measure the activity that the model changes and the resulting physical output, not only the model's performance.
 
-## Most AI is not AI-for-climate
+## Most AI serves other applications
 
-The lecture notes that most AI use across society is in non-climate applications and characterizes much current AI-for-climate work as traditional AI rather than large generative models. This matters for two reasons:
+The lecture notes that most AI use across society serves non-climate applications and characterizes much current AI-for-climate work as traditional AI rather than large generative models. That distinction has two consequences:
 
 1. Climate-relevant progress does not necessarily require the largest models or the fastest growth in data-center demand.
 2. Claims about AI-for-climate should not be used as a blanket justification for every form of large-model expansion.
 
-The distinction also improves project design: start with the climate decision and its evidence needs, then select the simplest adequate method.
+Start with the climate decision and its evidence needs, then select the simplest adequate method.
 
 ## Questions to revisit
 

@@ -6,11 +6,11 @@
 
 The lecture closes by asking how institutions can encourage useful AI-for-climate work while requiring enough transparency to evaluate resource use and public impacts. It also broadens data-center governance from an energy-efficiency problem to a question of land, water, infrastructure, and community planning.
 
-## Fostering AI-for-climate applications
+## Support AI-for-climate applications
 
-The lecture lists dedicated public research and development funding, large monitoring programs such as Copernicus and NASA Harvest, and strategies that identify climate change as an application area. These measures can help build capacity for climate-relevant uses without assuming that every use needs a large general-purpose model.
+The lecture lists dedicated public research and development funding, large monitoring programs such as Copernicus and NASA Harvest, and strategies that identify climate change as an application area. These measures can build capacity for climate-relevant uses without assuming that every use needs a large general-purpose model.
 
-The frugal-application principle remains important: funding and procurement can reward systems that track performance alongside energy, water, and other resource requirements.
+Funding and procurement can reward systems that track performance alongside energy, water, and other resource requirements.
 
 ## Transparency initiatives
 
@@ -33,13 +33,13 @@ The lecture highlights several gaps in the EU AI Act framing presented in the sl
 - water consumption is not addressed in the same way;
 - environmental harm may be a relevant criterion without being made explicit for every system.
 
-The lesson is methodological as much as legal: a disclosure regime can improve accountability only if it covers the impact categories and lifecycle stages that determine the outcome, and if the data is available to the people making deployment decisions.
+A disclosure regime improves accountability only when it covers the impact categories and lifecycle stages that determine the outcome, and when the data reaches the people making deployment decisions.
 
 ## Data-center reporting and siting
 
 The lecture states that the EU data-center rules apply to facilities with a power demand of at least 500 kW and require annual reporting to an EU database. The listed information includes energy consumption, power utilization, temperature set points, waste-heat utilization, water use, and renewable-energy use.
 
-It then argues for integrated oversight of data-center siting. Location choices interact with:
+The lecture calls for integrated oversight of data-center siting. Location choices interact with:
 
 - energy and water availability;
 - local zoning and land use;
@@ -48,11 +48,11 @@ It then argues for integrated oversight of data-center siting. Location choices 
 - compensation and community-benefit frameworks;
 - digital-economy, environmental, and territorial policy.
 
-This is a people-centered governance question: a data center may satisfy a national energy target while imposing concentrated costs on a local community.
+Siting decisions also distribute costs. A data center may satisfy a national energy target while imposing concentrated costs on a local community.
 
 ## Questions to revisit
 
-- Who needs environmental data in order to make a meaningful decision?
+- Who needs environmental data to make a meaningful decision?
 - Which lifecycle stages should a disclosure rule cover?
 - What information should be public, and what is only useful to regulators?
 - Can a data-center permit account for seasonal water stress and grid peaks?

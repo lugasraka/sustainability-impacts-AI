@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidence Audit Card</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #1a2230;
+    --muted: #5a6472;
+    --accent: #1f6feb;
+    --border: #d9dee6;
+    --good: #1a7f4b;
+    --warn: #8a5a00;
+    --bad: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  header { background: var(--ink); color: #fff; padding: 24px 28px; }
+  header h1 { margin: 0 0 6px; font-size: 1.5rem; }
+  header p { margin: 0; color: #c6cdd8; font-size: 0.92rem; max-width: 70rem; }
+  main { max-width: 76rem; margin: 0 auto; padding: 20px 28px 48px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  label.block { display: block; }
+  label.block .lbl { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; }
+  textarea { width: 100%; min-height: 70px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font: inherit; }
+  .criteria { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 24px; }
+  .criteria label { display: block; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  th { background: #eef1f5; }
+  .label { font-size: 1.1rem; font-weight: 700; padding: 10px 14px; border-radius: 6px; margin: 10px 0 4px; display: inline-block; }
+  .label.high { background: #e7f4ec; color: var(--good); border: 1px solid #9fd0b5; }
+  .label.medium { background: #fdf3dd; color: var(--warn); border: 1px solid #ecd9a0; }
+  .label.low { background: #fdecea; color: var(--bad); border: 1px solid #f0b3ae; }
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 800px) { .columns { grid-template-columns: 1fr; } }
+  .note { font-size: 0.85rem; color: var(--muted); }
+  pre { background: #eef1f5; border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 0.8rem; overflow-x: auto; max-height: 320px; }
+  button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 0.9rem; cursor: pointer; }
+  button:hover { filter: brightness(1.08); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Evidence audit card</h1>
+  <p>Challenge from lecture 04: take one sustainability claim through nine audit fields and
+     let explicit rules assign a confidence label — then read why. The label is a heuristic
+     derived from the rules below, not a scientific certainty.</p>
+</header>
+<main>
+  <section class="card">
+    <h2>Claim and structured criteria</h2>
+    <label class="block">
+      <span class="lbl">Evidence kind</span>
+      <select id="evidence">
+        <option value="measured">measured</option>
+        <option value="modeled">modeled</option>
+        <option value="potential" selected>potential</option>
+      </select>
+    </label>
+    <div class="criteria" id="criteria"></div>
+  </section>
+
+  <section class="card">
+    <h2>Field audit</h2>
+    <div class="grid" id="fields"></div>
+  </section>
+
+  <section class="card">
+    <h2>Rules</h2>
+    <table>
+      <tr><th>Criterion</th><th>Values</th><th>Effect</th></tr>
+      <tr><td>Evidence kind</td><td>measured / modeled / potential</td><td>measured required for High; potential always Low</td></tr>
+      <tr><td>Baseline clear</td><td>yes / no</td><td>required for High and Medium</td></tr>
+      <tr><td>Method disclosed</td><td>yes / no</td><td>required for High and Medium</td></tr>
+      <tr><td>Boundary relevant</td><td>yes / no</td><td>required for High</td></tr>
+      <tr><td>Validated</td><td>yes / no</td><td>supporting for Medium</td></tr>
+      <tr><td>Adoption specified</td><td>yes / no</td><td>required for High and Medium</td></tr>
+      <tr><td>Categories complete</td><td>yes / no</td><td>required for High</td></tr>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Evidence card</h2>
+    <div id="label"></div>
+    <div class="columns">
+      <div>
+        <h3>Why this label</h3>
+        <ul id="reasons"></ul>
+      </div>
+      <div>
+        <h3>Missing evidence</h3>
+        <ul id="gaps"></ul>
+      </div>
+    </div>
+    <label class="block">
+      <span class="lbl">Reflection — which missing piece of evidence would most change your judgment?</span>
+      <textarea id="reflection"></textarea>
+    </label>
+    <button id="copyBtn">Copy card as Markdown</button>
+    <pre id="markdown"></pre>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+var FIELDS = [
+  ["claim", "Claim"],
+  ["metric", "Metric"],
+  ["boundary", "Boundary"],
+  ["baseline", "Baseline"],
+  ["mechanism", "Mechanism"],
+  ["adoption", "Adoption"],
+  ["negative_pathways", "Negative pathways"],
+  ["uncertainty", "Uncertainty"],
+  ["incentives", "Incentives"]
+];
+
+var EXAMPLE = {
+  claim: "AI could reduce global greenhouse-gas emissions by 4% in 2030 (2.4 Gt CO2e).",
+  metric: "Global GHG emissions; % reduction and Gt CO2e in 2030.",
+  boundary: "Unclear; appears global, across unspecified sectors and lifecycle stages.",
+  baseline: "Not specified; unclear which emissions trajectory the 4% is compared with.",
+  mechanism: "AI applications improve forecasting, optimization, and detection, which reduces emissions.",
+  adoption: "Assumes broad best-case adoption, but no adoption pathway or actors are specified.",
+  negative_pathways: "",
+  uncertainty: "Undisclosed model assumptions and extrapolated interviews; no uncertainty range.",
+  incentives: "Produced in a context where AI providers benefit from a positive framing."
+};
+
+var LABEL_NOTES = {
+  High: "Measured outcome, clear baseline, disclosed method, and relevant boundary.",
+  Medium: "Modeled estimate with disclosed assumptions but limited validation.",
+  Low: "Potential estimate with unclear baseline, adoption, method, or omitted impact categories."
+};
+
+var CRITERIA = [
+  ["baseline_clear", "Baseline or counterfactual is clear", false],
+  ["method_disclosed", "Method and units are disclosed", false],
+  ["boundary_relevant", "Boundary covers relevant lifecycle stages and impacts", false],
+  ["validated", "Estimate has some empirical validation", false],
+  ["adoption_specified", "Adoption conditions and actors are specified", false],
+  ["categories_complete", "Positive, negative, and system-level pathways are included", false]
+];
+
+function classify(evidence, flags) {
+  var low = [];
+  if (evidence === "potential") { low.push("the evidence is a potential estimate, not a measured or validated outcome"); }
+  if (!flags.baseline_clear) { low.push("the baseline or counterfactual is unclear"); }
+  if (!flags.method_disclosed) { low.push("the method and units are not disclosed"); }
+  if (!flags.adoption_specified) { low.push("adoption conditions and actors are not specified"); }
+  if (!flags.categories_complete) { low.push("impact categories are omitted"); }
+  if (low.length) { return { label: "Low", reasons: low }; }
+
+  var high = [];
+  if (evidence === "measured") { high.push("the outcome is measured rather than modeled"); }
+  if (flags.baseline_clear) { high.push("the baseline or counterfactual is clear"); }
+  if (flags.method_disclosed) { high.push("the method and units are disclosed"); }
+  if (flags.boundary_relevant) { high.push("the boundary covers the relevant lifecycle stages and impacts"); }
+  if (flags.categories_complete) { high.push("positive, negative, and system-level pathways are included"); }
+  if (high.length === 5) { return { label: "High", reasons: high }; }
+
+  var medium = [];
+  if (evidence === "measured") {
+    medium.push("the outcome is measured but one or more High prerequisites are missing");
+  } else {
+    medium.push("the estimate is modeled with disclosed assumptions and limited validation");
+  }
+  return { label: "Medium", reasons: medium };
+}
+
+function missingEvidence(fields, evidence, flags) {
+  var gaps = [];
+  if (evidence === "potential") { gaps.push("a realized or measured outcome instead of a potential estimate"); }
+  if (!flags.baseline_clear) { gaps.push("a clear baseline or counterfactual"); }
+  if (!flags.method_disclosed) { gaps.push("a disclosed method with units"); }
+  if (!flags.boundary_relevant) { gaps.push("a boundary that covers the relevant lifecycle stages and impacts"); }
+  if (!flags.validated) { gaps.push("empirical validation of the estimate"); }
+  if (!flags.adoption_specified) { gaps.push("specified adoption conditions and the actors who must change behavior"); }
+  if (!flags.categories_complete) { gaps.push("at least one omitted impact category or system-level pathway"); }
+  FIELDS.forEach(function (pair) {
+    if (!fields[pair[0]].trim()) { gaps.push("the '" + pair[1] + "' field is empty or not addressed"); }
+  });
+  return gaps;
+}
+
+function readState() {
+  var evidence = document.getElementById("evidence").value;
+  var flags = {};
+  CRITERIA.forEach(function (c) {
+    flags[c[0]] = document.getElementById("c_" + c[0]).checked;
+  });
+  var fields = {};
+  FIELDS.forEach(function (pair) {
+    fields[pair[0]] = document.getElementById("f_" + pair[0]).value;
+  });
+  return { evidence: evidence, flags: flags, fields: fields };
+}
+
+function renderCriteria() {
+  var container = document.getElementById("criteria");
+  container.innerHTML = "";
+  CRITERIA.forEach(function (c) {
+    var label = document.createElement("label");
+    var input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = "c_" + c[0];
+    input.checked = c[2];
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(" " + c[1]));
+    container.appendChild(label);
+  });
+}
+
+function renderFields() {
+  var container = document.getElementById("fields");
+  container.innerHTML = "";
+  FIELDS.forEach(function (pair) {
+    var label = document.createElement("label");
+    label.className = "block";
+    var span = document.createElement("span");
+    span.className = "lbl";
+    span.textContent = pair[1];
+    var textarea = document.createElement("textarea");
+    textarea.id = "f_" + pair[0];
+    textarea.value = EXAMPLE[pair[0]] || "";
+    label.appendChild(span);
+    label.appendChild(textarea);
+    container.appendChild(label);
+  });
+}
+
+function renderCard(state) {
+  var result = classify(state.evidence, state.flags);
+  var gaps = missingEvidence(state.fields, state.evidence, state.flags);
+
+  var labelEl = document.getElementById("label");
+  labelEl.innerHTML = "";
+  var badge = document.createElement("div");
+  badge.className = "label " + result.label.toLowerCase();
+  badge.textContent = "Confidence label: " + result.label + " — " + LABEL_NOTES[result.label];
+  labelEl.appendChild(badge);
+
+  var reasonsEl = document.getElementById("reasons");
+  reasonsEl.innerHTML = "";
+  result.reasons.forEach(function (reason) {
+    var li = document.createElement("li");
+    li.textContent = reason;
+    reasonsEl.appendChild(li);
+  });
+
+  var gapsEl = document.getElementById("gaps");
+  gapsEl.innerHTML = "";
+  if (gaps.length) {
+    gaps.forEach(function (gap) {
+      var li = document.createElement("li");
+      li.textContent = gap;
+      gapsEl.appendChild(li);
+    });
+  } else {
+    var li = document.createElement("li");
+    li.textContent = "none identified";
+    gapsEl.appendChild(li);
+  }
+
+  document.getElementById("markdown").textContent = toMarkdown(state, result, gaps);
+}
+
+function toMarkdown(state, result, gaps) {
+  var lines = ["# Evidence Audit Card", ""];
+  lines.push("**Claim:** " + (state.fields.claim.trim() || "(not stated)"));
+  lines.push("**Confidence label:** " + result.label + " (" + LABEL_NOTES[result.label] + ")");
+  lines.push("");
+  lines.push("## Field audit");
+  FIELDS.forEach(function (pair) {
+    lines.push("- **" + pair[1] + ":** " + (state.fields[pair[0]].trim() || "(not stated)"));
+  });
+  lines.push("");
+  lines.push("## Why this label");
+  result.reasons.forEach(function (reason) { lines.push("- " + reason); });
+  lines.push("");
+  lines.push("## Missing evidence");
+  gaps.forEach(function (gap) { lines.push("- " + gap); });
+  lines.push("");
+  lines.push("## Reflection");
+  lines.push(document.getElementById("reflection").value.trim() || "(not stated)");
+  return lines.join("\n");
+}
+
+function refresh() {
+  renderCard(readState());
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  renderCriteria();
+  renderFields();
+  refresh();
+  document.getElementById("evidence").addEventListener("change", refresh);
+  document.querySelectorAll("#criteria input").forEach(function (input) {
+    input.addEventListener("change", refresh);
+  });
+  document.querySelectorAll("#fields textarea").forEach(function (textarea) {
+    textarea.addEventListener("input", refresh);
+  });
+  document.getElementById("reflection").addEventListener("input", refresh);
+  document.getElementById("copyBtn").addEventListener("click", function () {
+    var md = document.getElementById("markdown").textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(md);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = md;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  });
+});
+</script>
+</body>
+</html>

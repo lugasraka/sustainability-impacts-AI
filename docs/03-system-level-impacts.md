@@ -4,7 +4,7 @@
 
 ## What this section is about
 
-An AI application can change the larger system around it. The outcome may be different from the application's direct technical effect because people adapt, demand changes, infrastructure becomes locked in, or control and access shift between groups.
+An AI application can change the larger system around it. People adapt, demand shifts, infrastructure locks in, and control or access moves between groups, so the system outcome can diverge from the application's direct technical effect.
 
 ## Four system-level pathways
 
@@ -26,9 +26,9 @@ Personalization and amplification can influence what information people see and 
 
 Access to models, data, compute, and decision systems can shift agency and bargaining power. The lecture asks who can use AI, who controls the infrastructure, who is represented in the data, and who can contest an automated decision. These are sustainability questions because equitable access and institutional power affect whose environmental costs are accepted.
 
-## Why system effects belong in an impact assessment
+## Include system effects in the assessment
 
-System-level effects are difficult to quantify, but leaving them out can bias the result toward the application owner's preferred story. A complete assessment should at least name plausible pathways and state which ones are outside the calculation.
+System-level effects are difficult to quantify, but excluding them can bias an assessment toward the application owner's preferred story. A complete assessment should at least name plausible pathways and state which ones are outside the calculation.
 
 Use a causal chain:
 

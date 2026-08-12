@@ -1,14 +1,14 @@
 ### Optional Lecture Pre-Readings
 
-These links are the original reading list. The notes below summarize the lecture PDF and use these readings as supporting or contrasting material; they are not replacements for the original sources.
+These links are the original reading list. The notes summarize the lecture PDF and use these readings as supporting or contrasting material. Read the original sources for the full argument and evidence.
 
-## Aligning artificial intelligence with climate change mitigation, Kaack et al 2022 
+## Aligning artificial intelligence with climate change mitigation - Kaack et al. 2022
 https://www.nature.com/articles/s41558-022-01377-7
 
-## The AI Climate Hoax: Behind the Curtain of How Big Tech Greenwashes Impacts, Ketan Joshi, 2026 
+## The AI Climate Hoax: Behind the Curtain of How Big Tech Greenwashes Impacts - Ketan Joshi, 2026
 https://drive.google.com/file/d/12l1W4W25b-_ff6yFNJABkfal9_9oevxe/view
 
-## The Real Story on AI’s Water Use–and How to Tackle It, Shaolei Ren & Amy Luers, 2025 
+## The Real Story on AI's Water Use - and How to Tackle It, Shaolei Ren and Amy Luers, 2025
 https://spectrum.ieee.org/ai-water-usage
 
 ## Notes
