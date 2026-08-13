@@ -1,146 +1,7 @@
-import csv
-from pathlib import Path
-
-import numpy as np
 import pandas as pd
 import streamlit as st
 
-CSV_PATH = Path(__file__).resolve().parent / "scenarios.csv"
-
-BASE_COLUMNS = {
-    "baseline": "baseline_tco2e_per_year",
-    "efficiency": "efficiency_pct",
-    "adoption": "adoption_pct",
-    "ai": "ai_emissions_tco2e_per_year",
-    "rebound": "rebound_pct",
-}
-UNC_COLUMNS = {
-    "baseline": "unc_baseline_pct",
-    "efficiency": "unc_efficiency_pct",
-    "adoption": "unc_adoption_pct",
-    "ai": "unc_ai_pct",
-    "rebound": "unc_rebound_pct",
-}
-WIDGET_RANGES = {
-    "baseline": (0.0, 5_000_000.0),
-    "efficiency": (0.0, 30.0),
-    "adoption": (0.0, 100.0),
-    "ai": (0.0, 5_000.0),
-    "rebound": (-20.0, 50.0),
-    "unc": (0.0, 50.0),
-}
-LABELS = {
-    "baseline": "Baseline activity emissions (tCO2e/yr)",
-    "efficiency": "Efficiency improvement (%)",
-    "adoption": "Adoption rate (%)",
-    "ai": "Additional AI emissions (tCO2e/yr)",
-    "rebound": "Rebound / demand growth (%)",
-}
-MCS_DRAWS = 2000
-MCS_SEED = 42
-
-
-def load_scenarios(path=CSV_PATH):
-    with open(path, newline="", encoding="utf-8-sig") as handle:
-        reader = csv.DictReader(handle)
-        rows = list(reader)
-    if not rows:
-        raise ValueError("CSV is empty")
-    required = ["scenario", "kind", "direction"] + list(BASE_COLUMNS.values()) + list(UNC_COLUMNS.values())
-    missing = [c for c in required if c not in reader.fieldnames]
-    if missing:
-        raise ValueError(f"Missing columns: {', '.join(missing)}")
-    df = pd.DataFrame(rows)
-    numeric = ["direction"] + list(BASE_COLUMNS.values()) + list(UNC_COLUMNS.values())
-    for col in numeric:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-        if df[col].isna().any():
-            raise ValueError(f"Column '{col}' has non-numeric values")
-    return df
-
-
-def net_change(baseline, direction, efficiency, adoption, rebound, ai):
-    return baseline * (1 + direction * efficiency * adoption) * (1 + rebound) + ai - baseline
-
-
-def low_high(value, unc_pct):
-    return value * (1 - unc_pct / 100.0), value * (1 + unc_pct / 100.0)
-
-
-def monte_carlo(baseline, direction, efficiency, adoption, ai, rebound, uncs, draws=MCS_DRAWS, seed=MCS_SEED):
-    rng = np.random.default_rng(seed)
-    sampled = {}
-    for key, value in [
-        ("baseline", baseline),
-        ("efficiency", efficiency),
-        ("adoption", adoption),
-        ("ai", ai),
-        ("rebound", rebound),
-    ]:
-        lo, hi = low_high(value, uncs[key])
-        sampled[key] = rng.uniform(lo, hi, draws)
-    net = net_change(
-        sampled["baseline"],
-        direction,
-        sampled["efficiency"] / 100.0,
-        sampled["adoption"] / 100.0,
-        sampled["rebound"] / 100.0,
-        sampled["ai"],
-    )
-    p_negative = float((net < 0).mean())
-    return {
-        "mean": float(net.mean()),
-        "median": float(np.median(net)),
-        "p5": float(np.percentile(net, 5)),
-        "p95": float(np.percentile(net, 95)),
-        "p_negative": p_negative,
-        "draws": net,
-    }
-
-
-def tornado(baseline, direction, efficiency, adoption, ai, rebound, uncs):
-    base = {
-        "baseline": baseline,
-        "efficiency": efficiency / 100.0,
-        "adoption": adoption / 100.0,
-        "ai": ai,
-        "rebound": rebound / 100.0,
-    }
-    results = {}
-    for key, base_value in base.items():
-        lo, hi = low_high(base_value, uncs[key])
-        args_lo = dict(base)
-        args_hi = dict(base)
-        args_lo[key] = lo
-        args_hi[key] = hi
-        net_lo = net_change(
-            args_lo["baseline"], direction, args_lo["efficiency"],
-            args_lo["adoption"], args_lo["rebound"], args_lo["ai"],
-        )
-        net_hi = net_change(
-            args_hi["baseline"], direction, args_hi["efficiency"],
-            args_hi["adoption"], args_hi["rebound"], args_hi["ai"],
-        )
-        results[key] = abs(net_hi - net_lo)
-    return results
-
-
-def assumption_rows(row):
-    rows = []
-    for key, col in BASE_COLUMNS.items():
-        value = float(row[col])
-        unc = float(row[UNC_COLUMNS[key]])
-        lo, hi = low_high(value, unc)
-        rows.append(
-            {
-                "assumption": key,
-                "base": value,
-                "unc_pct": unc,
-                "low": lo,
-                "high": hi,
-            }
-        )
-    return pd.DataFrame(rows)
+import model
 
 
 def run_ui():
@@ -149,67 +10,114 @@ def run_ui():
     st.caption(
         "Challenge from lecture 02: one net outcome is never enough. Compare a "
         "mitigation application with an emissions-increasing one, vary the "
-        "assumptions, and see a range of net outcomes plus which assumption "
-        "drives the result."
+        "assumptions, and see a range of net outcomes, which assumption drives the "
+        "result, and how the headline potential compares with the realized net."
     )
 
     try:
-        scenarios = load_scenarios()
+        scenarios = model.load_scenarios()
     except (ValueError, OSError) as exc:
         st.error(f"Cannot load scenarios: {exc}")
         st.stop()
 
+    names = scenarios["scenario"].tolist()
+
     with st.sidebar:
         st.header("Inputs")
-        scenario_name = st.radio("Scenario", scenarios["scenario"].tolist())
+        scenario_name = st.radio("Scenario", names)
         row = scenarios[scenarios["scenario"] == scenario_name].iloc[0]
         direction = int(row["direction"])
+        compare_name = st.selectbox(
+            "Compare with", ["none"] + [n for n in names if n != scenario_name]
+        )
         st.caption(
-            f"{row['kind']} application (direction {'increases' if direction > 0 else 'reduces'} "
-            f"emissions where adopted). Values below are toy assumptions."
+            f"{row['kind']} application (direction "
+            f"{'increases' if direction > 0 else 'reduces'} emissions where adopted). "
+            f"Values below are toy assumptions."
         )
         values = {}
         uncs = {}
-        for key in BASE_COLUMNS:
-            vmin, vmax = WIDGET_RANGES[key]
-            default = float(row[BASE_COLUMNS[key]])
+        for key in model.BASE_COLUMNS:
+            vmin, vmax = model.WIDGET_RANGES[key]
+            default = float(row[model.BASE_COLUMNS[key]])
             if key in ("baseline", "ai"):
                 values[key] = st.number_input(
-                    LABELS[key], min_value=vmin, max_value=vmax, value=default,
+                    model.LABELS[key], min_value=vmin, max_value=vmax, value=default,
                     step=vmax / 100.0, format="%.0f",
                 )
             else:
                 values[key] = st.slider(
-                    LABELS[key], min_value=vmin, max_value=vmax, value=default,
+                    model.LABELS[key], min_value=vmin, max_value=vmax, value=default,
                     step=1.0, format="%.0f",
                 )
-            uncs[key] = st.slider(
-                f"Uncertainty ±% on {LABELS[key]}", min_value=0.0, max_value=50.0,
-                value=float(row[UNC_COLUMNS[key]]), step=1.0, format="%.0f",
-            )
+        with st.expander("Uncertainty ranges (±%)"):
+            for key in model.BASE_COLUMNS:
+                uncs[key] = st.slider(
+                    f"±% on {model.LABELS[key]}", min_value=0.0, max_value=50.0,
+                    value=float(row[model.UNC_COLUMNS[key]]), step=1.0, format="%.0f",
+                )
+        st.divider()
+        horizon = st.slider("Projection horizon (years)", 1, 30, 10, 1)
+        ramp_years = st.slider(
+            "Adoption ramp (years)", 1, 20, int(row["adoption_ramp_years"]), 1
+        )
 
     baseline, efficiency, adoption = values["baseline"], values["efficiency"], values["adoption"]
-    ai, rebound = values["ai"], values["rebound"]
+    ai, rebound, leakage, additionality = (
+        values["ai"], values["rebound"], values["leakage"], values["additionality"],
+    )
 
-    stats = monte_carlo(baseline, direction, efficiency, adoption, ai, rebound, uncs)
-    ranges = tornado(baseline, direction, efficiency, adoption, ai, rebound, uncs)
-    base_net = net_change(baseline, direction, efficiency / 100.0, adoption / 100.0, rebound / 100.0, ai)
+    stats = model.monte_carlo(
+        baseline, direction, efficiency, adoption, ai, rebound, leakage, additionality, uncs
+    )
+    ranges = model.tornado(
+        baseline, direction, efficiency, adoption, ai, rebound, leakage, additionality, uncs
+    )
+    base_net = model.net_change(
+        baseline, direction, efficiency / 100.0, adoption / 100.0,
+        rebound / 100.0, ai, leakage / 100.0, additionality / 100.0,
+    )
+    headline = model.headline_potential(baseline, direction, efficiency)
+    realized = model.realized_net(
+        baseline, direction, efficiency, adoption, ai, rebound, leakage, additionality
+    )
+    ramp_df = model.ramp_projection(
+        baseline, direction, efficiency, adoption, ai, rebound, leakage, additionality,
+        ramp_years, horizon,
+    )
     top_key = max(ranges, key=ranges.get)
 
+    compare_stats = None
+    compare_direction = None
+    if compare_name != "none":
+        c_row = scenarios[scenarios["scenario"] == compare_name].iloc[0]
+        compare_direction = int(c_row["direction"])
+        c_vals = {k: float(c_row[model.BASE_COLUMNS[k]]) for k in model.BASE_COLUMNS}
+        c_uncs = {k: float(c_row[model.UNC_COLUMNS[k]]) for k in model.BASE_COLUMNS}
+        compare_stats = model.monte_carlo(
+            c_vals["baseline"], compare_direction, c_vals["efficiency"],
+            c_vals["adoption"], c_vals["ai"], c_vals["rebound"],
+            c_vals["leakage"], c_vals["additionality"], c_uncs,
+        )
+
     st.subheader("Assumptions used")
-    rows_df = assumption_rows(row)
+    rows_df = model.assumption_rows(values, uncs)
     rows_df["base"] = rows_df["base"].map(lambda v: f"{v:,.0f}")
     rows_df["low"] = rows_df["low"].map(lambda v: f"{v:,.0f}")
     rows_df["high"] = rows_df["high"].map(lambda v: f"{v:,.0f}")
     rows_df["unc_pct"] = rows_df["unc_pct"].map(lambda v: f"±{v:.0f}%")
+    rows_df["assumption"] = rows_df["assumption"].map(model.LABELS)
     st.table(
         rows_df.rename(columns={
             "assumption": "assumption", "base": "base value", "unc_pct": "uncertainty",
             "low": "low", "high": "high",
         })
     )
-    st.caption("Assumptions are toy values for demonstration; net change is "
-               "baseline × (1 + direction × efficiency × adoption) × (1 + rebound) + AI − baseline.")
+    st.caption(
+        "Assumptions are toy values for demonstration; net change is baseline × "
+        "(1 + direction × efficiency × adoption × additionality × (1 − leakage)) × "
+        "(1 + rebound) + AI − baseline."
+    )
 
     st.subheader("Net outcome range (Monte Carlo, 2000 draws)")
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -219,32 +127,81 @@ def run_ui():
     col4.metric("p5–p95", f"{stats['p5']:+,.0f} … {stats['p95']:+,.0f}")
     col5.metric("P(net reduction)", f"{stats['p_negative'] * 100:.0f}%")
 
-    draws = stats["draws"]
-    hist, edges = np.histogram(draws, bins=25)
-    centers = (edges[:-1] + edges[1:]) / 2
-    hist_df = pd.DataFrame({"count": hist}, index=[f"{c:+,.0f}" for c in centers])
-    st.bar_chart(hist_df, height=300)
-    verdict = (
-        "reduction" if stats["p_negative"] >= 0.5 else "increase"
-    )
-    st.write(
-        f"The range of outcomes centers on a net **{verdict}** "
-        f"(probability of a net reduction: **{stats['p_negative'] * 100:.0f}%**). "
-        f"The sign can flip: it depends on the assumptions, not on the application label."
-    )
+    if compare_stats is not None:
+        overlay_df = model.overlay_histogram_df(
+            stats["draws"], scenario_name, compare_stats["draws"], compare_name
+        )
+        st.bar_chart(overlay_df, height=320)
+        main_verdict = "reduction" if stats["p_negative"] >= 0.5 else "increase"
+        comp_verdict = "reduction" if compare_stats["p_negative"] >= 0.5 else "increase"
+        st.write(
+            f"**{scenario_name}** centers on a net **{main_verdict}** "
+            f"(P(reduction) {stats['p_negative'] * 100:.0f}%); "
+            f"**{compare_name}** centers on a net **{comp_verdict}** "
+            f"(P(reduction) {compare_stats['p_negative'] * 100:.0f}%). The sign depends "
+            f"on the assumptions, not on the application label."
+        )
+    else:
+        hist_df = model.histogram_df(stats["draws"])
+        st.bar_chart(hist_df, height=320)
+        verdict = "reduction" if stats["p_negative"] >= 0.5 else "increase"
+        st.write(
+            f"The range of outcomes centers on a net **{verdict}** "
+            f"(probability of a net reduction: **{stats['p_negative'] * 100:.0f}%**). "
+            f"The sign can flip: it depends on the assumptions, not on the application label."
+        )
 
     st.subheader("Which assumption drives the result?")
     tornado_df = pd.DataFrame(
         {"range_tco2e_per_year": [ranges[k] for k in ranges]},
-        index=[LABELS[k] for k in ranges],
+        index=[model.LABELS[k] for k in ranges],
     )
-    st.bar_chart(tornado_df, horizontal=True, height=260)
+    st.bar_chart(tornado_df, horizontal=True, height=300)
     st.write(
-        f"**Most sensitive assumption: {LABELS[top_key]}** — varying it across its "
+        f"**Most sensitive assumption: {model.LABELS[top_key]}** — varying it across its "
         f"uncertainty range moves the net outcome by {ranges[top_key]:,.0f} tCO2e/yr, "
         f"more than any other assumption."
     )
 
+    st.subheader("Potential vs realized")
+    p1, p2, p3 = st.columns(3)
+    p1.metric("Headline potential", f"{headline:+,.0f} tCO2e/yr")
+    p2.metric("Realized net", f"{realized:+,.0f} tCO2e/yr")
+    p3.metric("Gap", f"{headline - realized:+,.0f} tCO2e/yr")
+    ramp_chart = ramp_df.set_index("year")[
+        ["net_tco2e", "headline_potential_tco2e"]
+    ].rename(columns={
+        "net_tco2e": "realized net (with ramp)",
+        "headline_potential_tco2e": "headline potential",
+    })
+    st.line_chart(ramp_chart, height=280)
+    st.caption(
+        "Headline potential assumes full adoption with no leakage, additionality "
+        "discount, rebound, or AI-side cost — the style of claim the lecture warns "
+        "against. Realized net applies the current assumptions and an adoption ramp."
+    )
+
+    st.subheader("Counterfactual story")
+    story = {}
+    cols = st.columns(2)
+    for i, (key, label) in enumerate(model.STORY_FIELDS):
+        with cols[i % 2]:
+            story[key] = st.text_area(
+                label, value=str(row[key]), key=f"story_{key}", height=70
+            )
+
+    markdown = model.to_markdown(
+        scenario_name, row["kind"], direction, values, uncs, stats, base_net,
+        top_key, headline, realized, story, ramp_years, horizon,
+    )
+    st.download_button(
+        "Download report (Markdown)", markdown,
+        file_name="counterfactual-assessment.md", mime="text/markdown",
+    )
+    with st.expander("Preview Markdown report"):
+        st.code(markdown, language="markdown")
+
+    st.subheader("Reflection")
     st.caption(
         "Would you act on a 'reduction' before it is realized? Evidence that "
         "distinguishes a genuine reduction from a claim based on potential "

@@ -9,7 +9,8 @@
 
 - Each directory under `challenges/` is a self-contained interactive exercise.
 - Keep each challenge's CSV data, browser assets, and local Python modules beside the entry point that loads them. Apps resolve data with paths relative to `__file__`, not the repository root.
-- Challenge 03 shares calculations in `model.py` between its Streamlit and Gradio UIs. Challenge 04 shares audit rules in `card.py`; Challenge 05 shares policy-stage logic in `coverage.py`. Update and check every UI that uses a shared module.
+- Challenges 01, 02, and 03 share calculations in a local `model.py`; Challenge 03's is used by both its Streamlit and Gradio UIs. Challenge 04 shares audit rules in `card.py`; Challenge 05 shares policy-coverage logic in `coverage.py`. Update and check every UI that uses a shared module.
+- Challenge 02's `explorer.html` is a standalone browser mirror of `model.py`. Because it is JavaScript and cannot import the Python module, keep its formulas and scenarios matched to `model.py` by hand.
 - Lecture notes and the source PDF belong under `docs/`; runnable exercises belong under `challenges/`.
 
 ## Run And Test

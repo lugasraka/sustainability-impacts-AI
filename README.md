@@ -48,11 +48,11 @@ Each challenge keeps its example inputs beside its entry point.
 
 | Challenge | What it explores | Streamlit entry point |
 | --- | --- | --- |
-| [Frugal deployment](challenges/01-frugal-deployment/app.py) | Compare models for the same task by accuracy, energy, carbon, and water use. | `python -m streamlit run challenges/01-frugal-deployment/app.py` |
-| [Counterfactual explorer](challenges/02-counterfactual-explorer/app.py) | Vary adoption, efficiency, rebound, and AI emissions, then inspect outcome ranges and sensitivity. | `python -m streamlit run challenges/02-counterfactual-explorer/app.py` |
+| [Frugal deployment](challenges/01-frugal-deployment/app.py) | Compare models for the same task by accuracy, energy, carbon, and water, then vary the grid, cooling, embodied hardware, training, and usage growth. | `python -m streamlit run challenges/01-frugal-deployment/app.py` |
+| [Counterfactual explorer](challenges/02-counterfactual-explorer/app.py) | Vary adoption, efficiency, rebound, leakage, additionality, and AI emissions; inspect outcome ranges, sensitivity, and potential vs realized. | `python -m streamlit run challenges/02-counterfactual-explorer/app.py` |
 | [Rebound-loop simulator](challenges/03-rebound-loop/app.py) | Test whether efficiency gains survive demand growth and infrastructure lock-in. | `python -m streamlit run challenges/03-rebound-loop/app.py` |
 | [Evidence audit card](challenges/04-evidence-audit/app.py) | Audit one sustainability claim against nine fields and explicit confidence rules. | `python -m streamlit run challenges/04-evidence-audit/app.py` |
-| [Policy coverage matrix](challenges/05-policy-coverage/app.py) | See which lifecycle stages transparency regimes measure, for whom, and where they leave gaps. | `python -m streamlit run challenges/05-policy-coverage/app.py` |
+| [Policy coverage matrix](challenges/05-policy-coverage/app.py) | See which lifecycle stages and impact categories regimes measure, who can access the data, and where the biggest gaps are. | `python -m streamlit run challenges/05-policy-coverage/app.py` |
 
 The counterfactual explorer has a browser-only version: [explorer.html](challenges/02-counterfactual-explorer/explorer.html). The evidence audit card also has a browser-only version: [evidence-card.html](challenges/04-evidence-audit/evidence-card.html). The rebound-loop simulator has a Gradio entry point:
 

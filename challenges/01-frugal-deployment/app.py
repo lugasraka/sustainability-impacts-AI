@@ -1,137 +1,47 @@
-import csv
-import sys
-from pathlib import Path
-
 import pandas as pd
 import streamlit as st
 
-CSV_PATH = Path(__file__).resolve().parent / "models.csv"
-RESOURCE_COLUMNS = [
-    "energy_kwh_per_1000_requests",
-    "grid_gco2e_per_kwh",
-    "direct_water_ml_per_1000_requests",
-    "indirect_water_ml_per_1000_requests",
-]
-REQUIRED_COLUMNS = ["task", "model", "accuracy"] + RESOURCE_COLUMNS
-ANNUAL_COLUMNS = [
-    "annual_energy_kwh",
-    "annual_carbon_tco2e",
-    "annual_direct_water_l",
-    "annual_indirect_water_l",
-]
+import model
+
+METRIC_LABELS = {
+    "annual_energy_kwh": "Energy (kWh/yr)",
+    "annual_carbon_tco2e": "Carbon (tCO2e/yr)",
+    "annual_direct_water_l": "Direct water (L/yr)",
+    "annual_indirect_water_l": "Indirect water (L/yr)",
+}
 
 
-def load_models(path=CSV_PATH):
-    with open(path, newline="", encoding="utf-8-sig") as handle:
-        reader = csv.DictReader(handle)
-        rows = list(reader)
-    if not rows:
-        raise ValueError("CSV is empty")
-    missing = [c for c in REQUIRED_COLUMNS if c not in reader.fieldnames]
-    if missing:
-        raise ValueError(f"Missing columns: {', '.join(missing)}")
-    df = pd.DataFrame(rows)
-    if df["model"].duplicated().any():
-        raise ValueError("model column contains duplicate names")
-    for col in ["accuracy"] + RESOURCE_COLUMNS:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-        if df[col].isna().any():
-            raise ValueError(f"Column '{col}' has non-numeric values")
-    return df
-
-
-def grid_for_model(row, grid_override):
-    if grid_override is not None:
-        return float(grid_override), "override"
-    return float(row["grid_gco2e_per_kwh"]), "csv"
-
-
-def compute_metrics(df, volume, grid_override=None):
-    volume = float(volume)
-    if volume < 0:
-        raise ValueError("Request volume cannot be negative")
-    rows = []
-    for _, row in df.iterrows():
-        grid, grid_source = grid_for_model(row, grid_override)
-        annual_energy = float(row["energy_kwh_per_1000_requests"]) * volume / 1000.0
-        annual_carbon = annual_energy * grid / 1e6
-        annual_direct = float(row["direct_water_ml_per_1000_requests"]) * volume / 1e6
-        annual_indirect = float(row["indirect_water_ml_per_1000_requests"]) * volume / 1e6
-        rows.append(
-            {
-                "task": row["task"],
-                "model": row["model"],
-                "accuracy": float(row["accuracy"]),
-                "grid_gco2e_per_kwh": grid,
-                "grid_source": grid_source,
-                "annual_energy_kwh": annual_energy,
-                "annual_carbon_tco2e": annual_carbon,
-                "annual_direct_water_l": annual_direct,
-                "annual_indirect_water_l": annual_indirect,
-            }
-        )
-    return pd.DataFrame(rows)
-
-
-def find_dominated(metrics, min_accuracy):
-    eligible = metrics[metrics["accuracy"] >= min_accuracy]
-    dominated = {name: [] for name in metrics["model"]}
-    for _, row in eligible.iterrows():
-        for _, other in eligible.iterrows():
-            if other["model"] == row["model"]:
-                continue
-            if other["accuracy"] < row["accuracy"]:
-                continue
-            not_worse = all(other[c] <= row[c] for c in ANNUAL_COLUMNS)
-            strictly_better = any(other[c] < row[c] for c in ANNUAL_COLUMNS)
-            if not_worse and strictly_better:
-                dominated[row["model"]].append(other["model"])
-    return dominated
-
-
-def recommend(metrics, min_accuracy, dominated):
-    eligible = metrics[metrics["accuracy"] >= min_accuracy]
-    if eligible.empty:
-        return None, None
-    non_dominated = eligible[~eligible["model"].isin(
-        [m for m, dom in dominated.items() if dom]
-    )]
-    candidates = non_dominated if not non_dominated.empty else eligible
-    best = candidates.loc[candidates["annual_carbon_tco2e"].idxmin()]
-    top_accuracy = eligible["accuracy"].max()
-    return best, top_accuracy
-
-
-def format_table(metrics, dominated, min_accuracy):
+def format_table(metrics, labels, min_accuracy):
     display = metrics.copy()
-    display["annual_energy_kwh"] = display["annual_energy_kwh"].map(
-        lambda v: f"{v:,.1f}"
-    )
-    display["annual_carbon_tco2e"] = display["annual_carbon_tco2e"].map(
-        lambda v: f"{v:,.3f}"
-    )
-    display["annual_direct_water_l"] = display["annual_direct_water_l"].map(
-        lambda v: f"{v:,.0f}"
-    )
-    display["annual_indirect_water_l"] = display["annual_indirect_water_l"].map(
-        lambda v: f"{v:,.0f}"
-    )
-    display["grid_gco2e_per_kwh"] = display["grid_gco2e_per_kwh"].map(
-        lambda v: f"{v:,.0f}"
-    )
-    display["grid_source"] = display["grid_source"].map(
-        lambda v: "override" if v == "override" else "csv"
-    )
+    display["annual_energy_kwh"] = display["annual_energy_kwh"].map(lambda v: f"{v:,.1f}")
+    display["annual_carbon_tco2e"] = display["annual_carbon_tco2e"].map(lambda v: f"{v:,.3f}")
+    display["annual_direct_water_l"] = display["annual_direct_water_l"].map(lambda v: f"{v:,.0f}")
+    display["annual_indirect_water_l"] = display["annual_indirect_water_l"].map(lambda v: f"{v:,.0f}")
+    display["annual_embodied_tco2e"] = display["annual_embodied_tco2e"].map(lambda v: f"{v:,.3f}")
+    display["annual_training_tco2e"] = display["annual_training_tco2e"].map(lambda v: f"{v:,.3f}")
     status = []
     for _, row in metrics.iterrows():
         if row["accuracy"] < min_accuracy:
-            status.append("below min accuracy - excluded")
-        elif dominated[row["model"]]:
-            status.append("dominated by " + ", ".join(dominated[row["model"]]))
+            status.append("below min accuracy")
+        elif labels[row["model"]] == "dominated":
+            status.append("dominated")
         else:
             status.append("candidate")
     display["status"] = status
-    return display[["model", "accuracy", "grid_gco2e_per_kwh", "grid_source"] + ANNUAL_COLUMNS + ["status"]]
+    cols = ["model", "accuracy"] + model.ANNUAL_COLUMNS + [
+        "annual_embodied_tco2e", "annual_training_tco2e", "status",
+    ]
+    return display[cols]
+
+
+def row_style(row):
+    if row["status"] == "candidate":
+        color = "lightgreen"
+    elif row["status"] == "dominated":
+        color = "lightcoral"
+    else:
+        color = "lightgray"
+    return [f"background-color: {color}"] * len(row)
 
 
 def run_ui():
@@ -139,12 +49,23 @@ def run_ui():
     st.title("Frugal deployment selector")
     st.caption(
         "Challenge from lecture 01: compare hypothetical models for the same task "
-        "and flag models dominated by another with equal or better accuracy and "
-        "lower resource use."
+        "across accuracy, energy, carbon, and water — then explore how the grid, "
+        "embodied hardware, training, cooling, and usage growth change which model "
+        "looks frugal."
     )
+
+    try:
+        df = model.load_models()
+    except (ValueError, OSError) as exc:
+        st.error(f"Cannot load models: {exc}")
+        st.stop()
+
+    tasks = df["task"].unique().tolist()
 
     with st.sidebar:
         st.header("Inputs")
+        task = st.radio("Task", tasks)
+        task_models = df[df["task"] == task]
         volume = st.number_input(
             "Annual request volume",
             min_value=0.0,
@@ -153,55 +74,135 @@ def run_ui():
             format="%.0f",
         )
         min_accuracy = st.slider("Minimum acceptable accuracy", 0.0, 1.0, 0.90, 0.01)
-        use_override = st.checkbox("Override grid intensity for all models")
-        grid_override = None
-        if use_override:
-            grid_override = st.number_input(
+        st.divider()
+
+        preset_names = list(model.GRID_PRESETS.keys())
+        grid_preset = st.radio(
+            "Grid carbon intensity",
+            preset_names,
+            index=preset_names.index("US average (450 g CO2e/kWh)"),
+        )
+        use_custom_grid = st.checkbox("Use a custom grid intensity")
+        if use_custom_grid:
+            grid = st.number_input(
                 "Grid intensity (g CO2e / kWh)",
                 min_value=0.0,
-                value=450.0,
+                value=model.GRID_PRESETS[grid_preset],
                 step=25.0,
                 format="%.0f",
             )
+        else:
+            grid = model.GRID_PRESETS[grid_preset]
+        st.divider()
 
-    try:
-        df = load_models()
-        metrics = compute_metrics(df, volume, grid_override)
-    except (ValueError, OSError) as exc:
-        st.error(f"Cannot load or compute models: {exc}")
-        st.stop()
+        include_embodied = st.checkbox("Include embodied (hardware) emissions", value=False)
+        hardware_lifetime = st.slider(
+            "Hardware lifetime (years)", 1, 10, model.DEFAULT_HARDWARE_LIFETIME, 1,
+        )
+        include_training = st.checkbox("Include amortized training emissions", value=False)
+        training_years = st.slider(
+            "Training amortization (years)", 1, 10, model.DEFAULT_TRAINING_YEARS, 1,
+        )
+        rebound = st.slider(
+            "Usage growth / rebound (%)", 0.0, 200.0, 0.0, 5.0,
+        )
+        cooling = st.radio("Cooling technology", list(model.COOLING_OPTIONS.keys()))
+        st.caption("All values are toy assumptions for demonstration.")
 
-    dominated = find_dominated(metrics, min_accuracy)
-    best, top_accuracy = recommend(metrics, min_accuracy, dominated)
+    metrics = model.compute_metrics(
+        df, task, volume, grid, include_embodied, hardware_lifetime,
+        include_training, training_years, rebound, cooling,
+    )
+    dominated = model.find_dominated(metrics, min_accuracy)
+    labels = model.classify(metrics, min_accuracy, dominated)
+    best, top_accuracy = model.recommend(metrics, min_accuracy, dominated)
 
     st.subheader("Assumptions used")
     st.write(
-        f"Request volume: **{volume:,.0f}** requests/year | "
-        f"minimum accuracy: **{min_accuracy:.2f}** | "
-        f"annual figures scale the per-1000-request values in `models.csv`."
+        f"Task: **{task}** | volume: **{volume:,.0f}** requests/yr "
+        f"(scaled to **{volume * (1 + rebound / 100):,.0f}** after {rebound:.0f}% growth) | "
+        f"minimum accuracy: **{min_accuracy:.2f}** | grid: **{grid:,.0f} g CO2e/kWh** | "
+        f"cooling: **{cooling}**"
     )
-    st.table(
-        metrics[["model", "grid_gco2e_per_kwh", "grid_source"]].rename(
-            columns={
-                "grid_gco2e_per_kwh": "grid intensity applied (g CO2e/kWh)",
-                "grid_source": "source",
-            }
-        )
+    flags = []
+    if include_embodied:
+        flags.append(f"embodied amortized over {hardware_lifetime} yr")
+    if include_training:
+        flags.append(f"training amortized over {training_years} yr")
+    st.caption(
+        "Per-1000-request values come from `models.csv`. "
+        + ("Included: " + ", ".join(flags) + "." if flags else "Embodied and training excluded by default.")
+    )
+
+    n_candidates = sum(1 for v in labels.values() if v == "candidate")
+    n_dominated = sum(1 for v in labels.values() if v == "dominated")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Lowest-carbon candidate", best["model"] if best is not None else "—")
+    c2.metric(
+        "Its carbon", f"{best['annual_carbon_tco2e']:,.3f} tCO2e/yr" if best is not None else "—",
+    )
+    c3.metric(
+        "Its water (direct + indirect)",
+        f"{best['annual_direct_water_l'] + best['annual_indirect_water_l']:,.0f} L/yr"
+        if best is not None else "—",
+    )
+    c4.metric("Dominated models", n_dominated)
+
+    st.subheader("Model comparison")
+    metric_choice = st.radio(
+        "Metric to compare", list(METRIC_LABELS.keys()),
+        format_func=lambda k: METRIC_LABELS[k], horizontal=True,
+    )
+    chart_df = metrics.set_index("model")[[metric_choice]]
+    chart_df = chart_df.rename(columns={metric_choice: METRIC_LABELS[metric_choice]})
+    st.bar_chart(chart_df, height=320)
+
+    water_col1, water_col2 = st.columns(2)
+    with water_col1:
+        st.markdown("**Direct vs indirect water**")
+        water_df = metrics.set_index("model")[
+            ["annual_direct_water_l", "annual_indirect_water_l"]
+        ].rename(columns={
+            "annual_direct_water_l": "direct",
+            "annual_indirect_water_l": "indirect",
+        })
+        st.bar_chart(water_df, height=320)
+    with water_col2:
+        if include_training:
+            st.markdown("**Inference vs training carbon**")
+            split_df = metrics.set_index("model")[
+                ["annual_carbon_tco2e", "annual_training_tco2e"]
+            ].rename(columns={
+                "annual_carbon_tco2e": "inference + embodied",
+                "annual_training_tco2e": "training",
+            })
+            st.bar_chart(split_df, height=320)
+        else:
+            st.markdown("**Training split**")
+            st.info(
+                "Enable 'amortized training emissions' in the sidebar to compare "
+                "inference against training carbon."
+            )
+
+    st.subheader("Accuracy vs carbon (Pareto frontier)")
+    pareto_df = metrics[["model", "accuracy", "annual_carbon_tco2e"]].copy()
+    pareto_df["status"] = [labels[m] for m in pareto_df["model"]]
+    pareto_df["status_color"] = pareto_df["status"].map(
+        {"candidate": "#2ca02c", "dominated": "#d62728", "below": "#7f7f7f"}
+    )
+    st.scatter_chart(
+        pareto_df, x="accuracy", y="annual_carbon_tco2e", color="status_color",
+        size=None, height=320,
+    )
+    st.caption(
+        "Green = candidate (non-dominated), red = dominated by another model, "
+        "gray = below minimum accuracy. A model is dominated when another meets or "
+        "beats its accuracy while using no more energy, carbon, or water."
     )
 
     st.subheader("Annual results")
-    display = format_table(metrics, dominated, min_accuracy)
-    color_map = {"candidate": "lightgreen", "dominated": "lightcoral", "below": "lightgray"}
-
-    def row_style(row):
-        status = row["status"]
-        if status == "candidate":
-            return [f"background-color: {color_map['candidate']}"] * len(row)
-        if status.startswith("dominated"):
-            return [f"background-color: {color_map['dominated']}"] * len(row)
-        return [f"background-color: {color_map['below']}"] * len(row)
-
-    st.dataframe(display.style.apply(row_style, axis=1))
+    display = format_table(metrics, labels, min_accuracy)
+    st.dataframe(display.style.apply(row_style, axis=1), hide_index=True)
 
     st.subheader("Recommendation")
     if best is None:
@@ -214,15 +215,16 @@ def run_ui():
         )
         if accuracy_gap > 0:
             st.write(
-                f"The most accurate eligible model reaches {top_accuracy:.2f}, "
-                f"so you give up {accuracy_gap:.2f} accuracy points. Trade-offs to "
-                f"weigh: latency, reliability, quality on edge cases, and whether "
-                f"the accuracy gap matters for the task."
+                f"The most accurate eligible model reaches {top_accuracy:.2f}, so you "
+                f"give up {accuracy_gap:.2f} accuracy points. Trade-offs to weigh: "
+                f"latency, reliability, quality on edge cases, and whether the accuracy "
+                f"gap matters for the task."
             )
         st.caption(
-            "Would you accept this model if it were slightly less accurate, slower, "
-            "or less reliable? Evidence that would help: measured task-level quality, "
-            "latency/service-level agreements, and failure-cost analysis."
+            "Would you accept this model if it were slightly less accurate, slower, or "
+            "less reliable? Evidence that would help: measured task-level quality, "
+            "latency/service-level agreements, and failure-cost analysis. Watch how "
+            "changing the grid, cooling, or growth can flip which model is frugal."
         )
 
 

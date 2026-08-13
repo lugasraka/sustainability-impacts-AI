@@ -26,7 +26,7 @@
   header { background: var(--ink); color: #fff; padding: 24px 28px; }
   header h1 { margin: 0 0 6px; font-size: 1.5rem; }
   header p { margin: 0; color: #c6cdd8; font-size: 0.92rem; max-width: 70rem; }
-  main { max-width: 72rem; margin: 0 auto; padding: 20px 28px 48px; }
+  main { max-width: 76rem; margin: 0 auto; padding: 20px 28px 48px; }
   .card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -41,8 +41,9 @@
   label.row { display: block; margin-bottom: 10px; }
   label.row .caption { display: block; font-size: 0.8rem; color: var(--muted); }
   input[type="range"] { width: 100%; }
-  input[type="number"] { width: 100%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; }
-  .radio-group { display: flex; gap: 18px; margin-bottom: 12px; flex-wrap: wrap; }
+  select { width: 100%; padding: 5px 7px; border: 1px solid var(--border); border-radius: 4px; }
+  textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font: inherit; }
+  .radio-group { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
   .value { font-variant-numeric: tabular-nums; font-weight: 600; }
   table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
   th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
@@ -52,8 +53,11 @@
   .stat .k { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .stat .v { font-size: 1.05rem; font-weight: 700; margin-top: 4px; }
   .histogram { display: flex; align-items: flex-end; gap: 2px; height: 180px; margin-top: 8px; }
-  .histogram .bar { background: var(--accent); min-width: 3px; flex: 1; border-radius: 2px 2px 0 0; }
-  .tornado .row { display: grid; grid-template-columns: 170px 1fr 120px; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .histogram .bar { min-width: 3px; flex: 1; border-radius: 2px 2px 0 0; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .compare { grid-template-columns: 1fr; } }
+  .compare .panel { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .tornado .row { display: grid; grid-template-columns: 210px 1fr 120px; gap: 8px; align-items: center; margin-bottom: 6px; }
   .tornado .track { background: #eef1f5; border-radius: 4px; height: 18px; position: relative; }
   .tornado .fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; }
   .tornado .top .fill { background: var(--bad); }
@@ -61,34 +65,59 @@
   .verdict { font-size: 0.95rem; padding: 10px 14px; border-radius: 6px; margin: 10px 0; }
   .verdict.good { background: #e7f4ec; border: 1px solid #9fd0b5; }
   .verdict.bad { background: #fdecea; border: 1px solid #f0b3ae; }
+  .verdict.mixed { background: #fff6e0; border: 1px solid #e6cf8f; }
   .note { font-size: 0.85rem; color: var(--muted); }
   .warn { font-size: 0.8rem; color: var(--muted); }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  svg { width: 100%; height: auto; }
 </style>
 </head>
 <body>
 <header>
   <h1>Climate-application counterfactual explorer</h1>
   <p>Challenge from lecture 02: one net outcome is never enough. Compare a mitigation
-     application with an emissions-increasing one, vary the assumptions, and see a range
-     of net outcomes plus which assumption drives the result. All values are toy
-     assumptions for demonstration.</p>
+     application with an emissions-increasing one, vary the assumptions (including leakage
+     and additionality), and see a range of net outcomes, which assumption drives the result,
+     and how the headline potential compares with the realized net over time. All values are
+     toy assumptions for demonstration.</p>
 </header>
 <main>
   <section class="card">
     <h2>Scenario</h2>
     <div class="radio-group" id="scenarioGroup"></div>
+    <label class="row">Compare with a second scenario (at its default assumptions)
+      <select id="compareSelect"></select>
+    </label>
     <p class="warn" id="kindNote"></p>
   </section>
 
   <section class="card">
-    <h2>Assumptions (toy values; mirror <code>scenarios.csv</code> from the Streamlit app)</h2>
+    <h2>Assumptions (toy values; mirror <code>scenarios.csv</code>)</h2>
     <div class="grid" id="assumptionInputs"></div>
+  </section>
+
+  <section class="card">
+    <h2>Projection</h2>
+    <div class="grid">
+      <fieldset>
+        <legend>Projection horizon (years)</legend>
+        <label class="row">value: <span class="value" id="horizonOut"></span>
+          <input type="range" id="horizonInput" min="1" max="30" step="1" value="10">
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>Adoption ramp (years)</legend>
+        <label class="row">value: <span class="value" id="rampOut"></span>
+          <input type="range" id="rampInput" min="1" max="20" step="1" value="3">
+        </label>
+      </fieldset>
+    </div>
   </section>
 
   <section class="card">
     <h2>Net outcome range (Monte Carlo, 2000 seeded draws)</h2>
     <div class="stats" id="statGrid"></div>
-    <div class="histogram" id="histogram"></div>
+    <div id="histogramArea"></div>
     <div class="verdict" id="verdict"></div>
   </section>
 
@@ -96,6 +125,21 @@
     <h2>Which assumption drives the result?</h2>
     <div class="tornado" id="tornado"></div>
     <p id="topDriver"></p>
+  </section>
+
+  <section class="card">
+    <h2>Potential vs realized</h2>
+    <div class="stats" id="potStats"></div>
+    <div id="rampChart"></div>
+    <p class="note">Headline potential assumes full adoption with no leakage, additionality
+      discount, rebound, or AI-side cost. Realized net applies the current assumptions and an
+      adoption ramp.</p>
+  </section>
+
+  <section class="card">
+    <h2>Counterfactual story</h2>
+    <div class="grid" id="storyFields"></div>
+    <p style="margin-top:12px"><button id="downloadBtn">Download report (Markdown)</button></p>
   </section>
 
   <section class="card">
@@ -113,26 +157,88 @@
 
 var SCENARIOS = [
   {
-    name: "Solar forecasting",
-    kind: "mitigation application",
-    direction: -1,
-    baseline: 1000000,
-    efficiency: 15,
-    adoption: 50,
-    ai: 100,
-    rebound: 0,
-    unc: { baseline: 20, efficiency: 30, adoption: 20, ai: 50, rebound: 50 }
+    name: "Solar forecasting", kind: "mitigation application", direction: -1,
+    baseline: 1000000, efficiency: 15, adoption: 50, ai: 100, rebound: 0,
+    leakage: 20, additionality: 70, rampYears: 3,
+    unc: { baseline: 20, efficiency: 30, adoption: 20, ai: 50, rebound: 50, leakage: 30, additionality: 25 },
+    story: {
+      decision: "when to store or dispatch solar power ahead of cloud cover",
+      baselinePractice: "fixed schedules and manual weather checks",
+      mechanism: "better solar output forecasts let operators hold dispatch until the sun returns",
+      actors: "grid operators and solar-plant staff",
+      scope: "regional grid, 2026-2030",
+      failureModes: "forecasts unused if dispatch is already locked in; the marginal grid may still burn fossil fuel"
+    }
   },
   {
-    name: "Fossil-fuel extraction optimization",
-    kind: "emissions-increasing application",
-    direction: 1,
-    baseline: 2000000,
-    efficiency: 5,
-    adoption: 50,
-    ai: 100,
-    rebound: 0,
-    unc: { baseline: 20, efficiency: 30, adoption: 20, ai: 50, rebound: 50 }
+    name: "Wildfire-risk classification", kind: "mitigation application", direction: -1,
+    baseline: 500000, efficiency: 10, adoption: 40, ai: 60, rebound: 0,
+    leakage: 10, additionality: 60, rampYears: 4,
+    unc: { baseline: 20, efficiency: 30, adoption: 20, ai: 50, rebound: 50, leakage: 30, additionality: 25 },
+    story: {
+      decision: "where to pre-position crews and stage power shutoffs",
+      baselinePractice: "historical burn maps and manual inspections",
+      mechanism: "earlier, higher-resolution risk scores focus suppression on the highest-risk areas",
+      actors: "utility wildfire teams and fire agencies",
+      scope: "western U.S. wildland-urban interface",
+      failureModes: "false alarms trigger unneeded shutoffs; models miss dry-wind events"
+    }
+  },
+  {
+    name: "Illegal-deforestation detection", kind: "mitigation application", direction: -1,
+    baseline: 800000, efficiency: 20, adoption: 35, ai: 90, rebound: 0,
+    leakage: 15, additionality: 65, rampYears: 5,
+    unc: { baseline: 20, efficiency: 30, adoption: 20, ai: 50, rebound: 50, leakage: 30, additionality: 25 },
+    story: {
+      decision: "which forest parcels to inspect and enforce",
+      baselinePractice: "periodic patrols and tip lines",
+      mechanism: "satellite alerts flag newly cleared areas sooner",
+      actors: "environmental agencies and local communities",
+      scope: "tropical forest frontier",
+      failureModes: "alerts not acted on; clearing shifts to unmonitored areas (leakage)"
+    }
+  },
+  {
+    name: "Climate-disinformation detection", kind: "mitigation application", direction: -1,
+    baseline: 200000, efficiency: 8, adoption: 30, ai: 40, rebound: 0,
+    leakage: 25, additionality: 40, rampYears: 3,
+    unc: { baseline: 25, efficiency: 35, adoption: 25, ai: 50, rebound: 50, leakage: 35, additionality: 30 },
+    story: {
+      decision: "which posts to label or downrank",
+      baselinePractice: "moderator reports and keyword filters",
+      mechanism: "classify coordinated false claims so platforms can reduce their reach",
+      actors: "platform trust-and-safety teams",
+      scope: "global social platforms",
+      failureModes: "weak evidence that reach reductions change beliefs; adversarial evasion"
+    }
+  },
+  {
+    name: "Fossil-fuel extraction optimization", kind: "emissions-increasing application", direction: 1,
+    baseline: 2000000, efficiency: 5, adoption: 50, ai: 100, rebound: 0,
+    leakage: 5, additionality: 80, rampYears: 3,
+    unc: { baseline: 20, efficiency: 30, adoption: 20, ai: 50, rebound: 50, leakage: 20, additionality: 20 },
+    story: {
+      decision: "where to drill and how to route logistics",
+      baselinePractice: "conventional exploration and scheduling",
+      mechanism: "better subsurface models and logistics raise output per dollar",
+      actors: "oil and gas operators",
+      scope: "new drilling basins",
+      failureModes: "lower cost expands extraction; emissions rise despite the efficiency gain"
+    }
+  },
+  {
+    name: "Demand and consumption optimization", kind: "emissions-increasing application", direction: 1,
+    baseline: 1500000, efficiency: 4, adoption: 60, ai: 150, rebound: 10,
+    leakage: 5, additionality: 80, rampYears: 2,
+    unc: { baseline: 20, efficiency: 30, adoption: 20, ai: 50, rebound: 50, leakage: 20, additionality: 20 },
+    story: {
+      decision: "which products or ads to personalize",
+      baselinePractice: "static recommendations and broad campaigns",
+      mechanism: "personalization raises conversion and purchase frequency",
+      actors: "retail and advertising platforms",
+      scope: "e-commerce, global",
+      failureModes: "more efficient selling grows total consumption"
+    }
   }
 ];
 
@@ -141,7 +247,9 @@ var RANGES = {
   efficiency: { min: 0, max: 30, step: 1 },
   adoption: { min: 0, max: 100, step: 1 },
   ai: { min: 0, max: 5000, step: 50 },
-  rebound: { min: -20, max: 50, step: 1 }
+  rebound: { min: -20, max: 50, step: 1 },
+  leakage: { min: 0, max: 100, step: 1 },
+  additionality: { min: 0, max: 100, step: 1 }
 };
 
 var LABELS = {
@@ -149,7 +257,18 @@ var LABELS = {
   efficiency: "Efficiency improvement (%)",
   adoption: "Adoption rate (%)",
   ai: "Additional AI emissions (tCO2e/yr)",
-  rebound: "Rebound / demand growth (%)"
+  rebound: "Rebound / demand growth (%)",
+  leakage: "Leakage — effect shifted elsewhere (%)",
+  additionality: "Additionality / attribution (%)"
+};
+
+var STORY_LABELS = {
+  decision: "Decision the model changes",
+  baselinePractice: "Baseline practice without AI",
+  mechanism: "Mechanism of the reduction or increase",
+  actors: "Actors and infrastructure that must adopt it",
+  scope: "Time period and geographic scope",
+  failureModes: "Rebound, leakage, and failure modes"
 };
 
 var DRAWS = 2000;
@@ -176,21 +295,35 @@ function fmtSigned(n) {
   return (n >= 0 ? "+" : "") + fmt(n) + " tCO2e";
 }
 
-function netChange(values) {
-  return values.baseline * (1 + values.direction * (values.efficiency / 100) * (values.adoption / 100))
-    * (1 + values.rebound / 100) + values.ai - values.baseline;
+function netChange(raw) {
+  var effect = raw.direction * (raw.efficiency / 100) * (raw.adoption / 100)
+    * (raw.additionality / 100) * (1 - raw.leakage / 100);
+  return raw.baseline * (1 + effect) * (1 + raw.rebound / 100) + raw.ai - raw.baseline;
 }
 
 function lowHigh(value, uncPct) {
   return [value * (1 - uncPct / 100), value * (1 + uncPct / 100)];
 }
 
-function runMC(values) {
+function rawValues(s) {
+  return {
+    direction: s.direction,
+    baseline: s.baseline,
+    efficiency: s.efficiency,
+    adoption: s.adoption,
+    ai: s.ai,
+    rebound: s.rebound,
+    leakage: s.leakage,
+    additionality: s.additionality
+  };
+}
+
+function runMC(raw, unc) {
   var rand = mulberry32(SEED);
+  var keys = ["baseline", "efficiency", "adoption", "ai", "rebound", "leakage", "additionality"];
   var samples = {};
-  var keys = ["baseline", "efficiency", "adoption", "ai", "rebound"];
   keys.forEach(function (key) {
-    var b = lowHigh(values[key], values.unc[key]);
+    var b = lowHigh(raw[key], unc[key]);
     samples[key] = [];
     for (var i = 0; i < DRAWS; i++) {
       samples[key].push(b[0] + (b[1] - b[0]) * rand());
@@ -199,12 +332,14 @@ function runMC(values) {
   var nets = [];
   for (var i = 0; i < DRAWS; i++) {
     nets.push(netChange({
-      direction: values.direction,
+      direction: raw.direction,
       baseline: samples.baseline[i],
       efficiency: samples.efficiency[i],
       adoption: samples.adoption[i],
       ai: samples.ai[i],
-      rebound: samples.rebound[i]
+      rebound: samples.rebound[i],
+      leakage: samples.leakage[i],
+      additionality: samples.additionality[i]
     }));
   }
   nets.sort(function (a, b) { return a - b; });
@@ -221,24 +356,61 @@ function runMC(values) {
   };
 }
 
-function tornado(values) {
-  var base = {
-    baseline: values.baseline,
-    efficiency: values.efficiency,
-    adoption: values.adoption,
-    ai: values.ai,
-    rebound: values.rebound
-  };
+function tornado(raw, unc) {
   var results = {};
-  Object.keys(base).forEach(function (key) {
-    var b = lowHigh(base[key], values.unc[key]);
-    var lo = Object.assign({}, base, { direction: values.direction });
-    var hi = Object.assign({}, base, { direction: values.direction });
+  Object.keys(raw).forEach(function (key) {
+    if (key === "direction") { return; }
+    var b = lowHigh(raw[key], unc[key]);
+    var lo = Object.assign({}, raw);
+    var hi = Object.assign({}, raw);
     lo[key] = b[0];
     hi[key] = b[1];
     results[key] = Math.abs(netChange(hi) - netChange(lo));
   });
   return results;
+}
+
+function headlinePotential(raw) {
+  return raw.baseline * (1 + raw.direction * (raw.efficiency / 100)) - raw.baseline;
+}
+
+function rampProjection(raw, rampYears, horizon) {
+  var headline = headlinePotential(raw);
+  var rows = [];
+  var cumulative = 0;
+  for (var y = 1; y <= horizon; y++) {
+    var frac = Math.min(1, y / rampYears);
+    var yr = netChange({
+      direction: raw.direction,
+      baseline: raw.baseline,
+      efficiency: raw.efficiency,
+      adoption: raw.adoption * frac,
+      ai: raw.ai * frac,
+      rebound: raw.rebound,
+      leakage: raw.leakage,
+      additionality: raw.additionality
+    });
+    cumulative += yr;
+    rows.push({ year: y, net: yr, cumulative: cumulative, headline: headline });
+  }
+  return { rows: rows, headline: headline };
+}
+
+function el(tag, attrs, text) {
+  var node = document.createElement(tag);
+  if (attrs) {
+    Object.keys(attrs).forEach(function (key) {
+      if (key === "dataset") {
+        Object.keys(attrs.dataset).forEach(function (d) { node.dataset[d] = attrs.dataset[d]; });
+      } else if (key === "html") {
+        node.innerHTML = attrs.html;
+      } else {
+        node.setAttribute(key, attrs[key]);
+      }
+    });
+  }
+  if (text !== undefined) { node.textContent = text; }
+  return node;
 }
 
 function setDefaults(scenario) {
@@ -249,27 +421,11 @@ function setDefaults(scenario) {
     adoption: scenario.adoption,
     ai: scenario.ai,
     rebound: scenario.rebound,
+    leakage: scenario.leakage,
+    additionality: scenario.additionality,
+    rampYears: scenario.rampYears,
     unc: Object.assign({}, scenario.unc)
   };
-}
-
-function el(tag, attrs, text) {
-  var node = document.createElement(tag);
-  if (attrs) {
-    Object.keys(attrs).forEach(function (key) {
-      if (key === "dataset") {
-        Object.keys(attrs.dataset).forEach(function (d) {
-          node.dataset[d] = attrs.dataset[d];
-        });
-      } else if (key === "html") {
-        node.innerHTML = attrs.html;
-      } else {
-        node.setAttribute(key, attrs[key]);
-      }
-    });
-  }
-  if (text !== undefined) { node.textContent = text; }
-  return node;
 }
 
 function renderScenarioGroup() {
@@ -284,11 +440,24 @@ function renderScenarioGroup() {
     radio.addEventListener("change", function () {
       current = index;
       setDefaults(SCENARIOS[index]);
+      renderCompareOptions();
       renderAssumptionInputs();
+      renderStoryFields();
       renderAll();
     });
   });
   radios[current].checked = true;
+}
+
+function renderCompareOptions() {
+  var select = document.getElementById("compareSelect");
+  select.innerHTML = "";
+  select.appendChild(el("option", { value: "none" }, "none"));
+  SCENARIOS.forEach(function (scenario, index) {
+    if (index !== current) {
+      select.appendChild(el("option", { value: index }, scenario.name));
+    }
+  });
 }
 
 function renderAssumptionInputs() {
@@ -308,8 +477,7 @@ function renderAssumptionInputs() {
       type: "range", min: r.min, max: r.max, step: r.step,
       value: state[key], dataset: { role: "value", key: key }
     });
-    var rangeLabel = el("label", { html: "base: <span class='value' data-out='" + key + "'>" + state[key] + "</span>" });
-    fieldset.appendChild(rangeLabel);
+    fieldset.appendChild(el("label", { html: "base: <span class='value' data-out='" + key + "'>" + state[key] + "</span>" }));
     fieldset.appendChild(rangeInput);
 
     var unc = state.unc[key];
@@ -317,13 +485,25 @@ function renderAssumptionInputs() {
       type: "range", min: 0, max: 50, step: 1, value: unc,
       dataset: { role: "unc", key: key }
     });
-    var uncLabel = el("label", { html: "uncertainty: <span class='value' data-outunc='" + key + "'>±" + unc + "%</span>" });
-    fieldset.appendChild(uncLabel);
+    fieldset.appendChild(el("label", { html: "uncertainty: <span class='value' data-outunc='" + key + "'>±" + unc + "%</span>" }));
     fieldset.appendChild(uncInput);
     container.appendChild(fieldset);
 
     rangeInput.addEventListener("input", renderAll);
     uncInput.addEventListener("input", renderAll);
+  });
+}
+
+function renderStoryFields() {
+  var container = document.getElementById("storyFields");
+  container.innerHTML = "";
+  var story = SCENARIOS[current].story;
+  Object.keys(STORY_LABELS).forEach(function (key) {
+    var fieldset = el("fieldset");
+    fieldset.appendChild(el("legend", null, STORY_LABELS[key]));
+    var ta = el("textarea", { id: "story_" + key, rows: 2 }, story[key]);
+    fieldset.appendChild(ta);
+    container.appendChild(fieldset);
   });
 }
 
@@ -334,18 +514,12 @@ function readState() {
   document.querySelectorAll("[data-role='unc']").forEach(function (input) {
     state.unc[input.dataset.key] = parseFloat(input.value);
   });
+  state.rampYears = parseInt(document.getElementById("rampInput").value, 10);
 }
 
-function renderStats(stats) {
-  var grid = document.getElementById("statGrid");
+function renderStats(elId, rows) {
+  var grid = document.getElementById(elId);
   grid.innerHTML = "";
-  var rows = [
-    ["Base net change", fmtSigned(netChange(state))],
-    ["Mean", fmtSigned(stats.mean)],
-    ["Median", fmtSigned(stats.median)],
-    ["p5 – p95", fmtSigned(stats.p5) + " … " + fmtSigned(stats.p95)],
-    ["P(net reduction)", Math.round(stats.pNegative * 100) + "%"]
-  ];
   rows.forEach(function (row) {
     var div = el("div", { class: "stat" });
     div.appendChild(el("div", { class: "k" }, row[0]));
@@ -354,8 +528,7 @@ function renderStats(stats) {
   });
 }
 
-function renderHistogram(stats) {
-  var container = document.getElementById("histogram");
+function renderHistogram(container, stats, color) {
   container.innerHTML = "";
   var min = stats.p5, max = stats.p95;
   if (min === max) { min -= 1; max += 1; }
@@ -368,10 +541,34 @@ function renderHistogram(stats) {
   });
   var peak = Math.max.apply(null, counts);
   counts.forEach(function (count, idx) {
-    var bar = el("div", { class: "bar", title: (min + (idx + 0.5) * width).toLocaleString("en-US") + " tCO2e: " + count });
+    var center = min + (idx + 0.5) * width;
+    var bar = el("div", { class: "bar", title: Math.round(center).toLocaleString("en-US") + " tCO2e: " + count });
     bar.style.height = (count / peak * 100) + "%";
+    bar.style.background = center <= 0 ? "#1a7f4b" : (color || "#b42318");
     container.appendChild(bar);
   });
+}
+
+function renderVerdict(stats, compareStats) {
+  var verdict = document.getElementById("verdict");
+  if (compareStats) {
+    var main = stats.pNegative >= 0.5 ? "reduction" : "increase";
+    var comp = compareStats.pNegative >= 0.5 ? "reduction" : "increase";
+    verdict.className = "verdict mixed";
+    verdict.textContent =
+      SCENARIOS[current].name + " centers on a net " + main + " (P(reduction) " +
+      Math.round(stats.pNegative * 100) + "%); the compared scenario centers on a net " +
+      comp + " (P(reduction) " + Math.round(compareStats.pNegative * 100) + "%). The sign " +
+      "depends on the assumptions, not on the application label.";
+    return;
+  }
+  var reduction = stats.pNegative >= 0.5;
+  verdict.className = "verdict " + (reduction ? "good" : "bad");
+  verdict.textContent =
+    "The range of outcomes centers on a net " + (reduction ? "reduction" : "increase") +
+    " (probability of a net reduction: " + Math.round(stats.pNegative * 100) + "%). " +
+    "The sign can flip when adoption, rebound, leakage, or additionality changes — it depends " +
+    "on the assumptions, not on the application label.";
 }
 
 function renderTornado(ranges) {
@@ -396,15 +593,79 @@ function renderTornado(ranges) {
     "range moves the net outcome by " + fmt(ranges[top]) + " tCO2e/yr, more than any other assumption.";
 }
 
-function renderVerdict(stats) {
-  var verdict = document.getElementById("verdict");
-  var reduction = stats.pNegative >= 0.5;
-  verdict.className = "verdict " + (reduction ? "good" : "bad");
-  verdict.textContent =
-    "The range of outcomes centers on a net " + (reduction ? "reduction" : "increase") +
-    " (probability of a net reduction: " + Math.round(stats.pNegative * 100) + "%). " +
-    "The sign can flip when adoption or rebound changes — it depends on the assumptions, " +
-    "not on the application label.";
+function renderRampChart(proj) {
+  var container = document.getElementById("rampChart");
+  var w = 660, h = 220, pl = 54, pr = 16, pt = 16, pb = 30;
+  var iw = w - pl - pr, ih = h - pt - pb;
+  var rows = proj.rows;
+  var vals = rows.map(function (r) { return r.net; }).concat([proj.headline, 0]);
+  var yMin = Math.min.apply(null, vals), yMax = Math.max.apply(null, vals);
+  if (yMin === yMax) { yMin -= 1; yMax += 1; }
+  function xFor(i) { return pl + (rows.length === 1 ? 0 : (i / (rows.length - 1)) * iw); }
+  function yFor(v) { return pt + (yMax - v) / (yMax - yMin) * ih; }
+  var pts = rows.map(function (r, i) { return xFor(i) + "," + yFor(r.net); }).join(" ");
+  var headlineY = yFor(proj.headline);
+  var zeroY = yFor(0);
+
+  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg" role="img">';
+  svg += '<line x1="' + pl + '" y1="' + zeroY + '" x2="' + (w - pr) + '" y2="' + zeroY + '" stroke="#9aa4b2" stroke-width="1"/>';
+  svg += '<line x1="' + pl + '" y1="' + headlineY + '" x2="' + (w - pr) + '" y2="' + headlineY + '" stroke="#b42318" stroke-width="1.5" stroke-dasharray="5 4"/>';
+  svg += '<polyline points="' + pts + '" fill="none" stroke="#1f6feb" stroke-width="2"/>';
+  rows.forEach(function (r, i) {
+    svg += '<circle cx="' + xFor(i) + '" cy="' + yFor(r.net) + '" r="3" fill="#1f6feb"/>';
+  });
+  svg += '<text x="' + (w - pr) + '" y="' + (headlineY - 5) + '" text-anchor="end" font-size="10" fill="#b42318">headline potential</text>';
+  svg += '<text x="' + (w - pr) + '" y="' + (zeroY - 5) + '" text-anchor="end" font-size="10" fill="#9aa4b2">0</text>';
+  svg += '<text x="' + pl + '" y="' + (h - 8) + '" font-size="10" fill="#5a6472">year 1</text>';
+  svg += '<text x="' + (w - pr) + '" y="' + (h - 8) + '" text-anchor="end" font-size="10" fill="#5a6472">year ' + rows.length + '</text>';
+  svg += '</svg>';
+  container.innerHTML = svg;
+}
+
+function buildMarkdown(stats, topKey, proj, realized) {
+  var scenario = SCENARIOS[current];
+  var signWord = scenario.direction < 0 ? "reduces" : "increases";
+  var lines = [
+    "# Counterfactual assessment: " + scenario.name,
+    "",
+    "- **Kind:** " + scenario.kind + " — where adopted, this application " + signWord + " emissions.",
+    "- **Projection:** " + document.getElementById("horizonInput").value + " years, adoption ramping over " + state.rampYears + " years.",
+    "",
+    "## Assumptions (toy values)"
+  ];
+  Object.keys(LABELS).forEach(function (key) {
+    lines.push("- " + LABELS[key] + ": " + fmt(state[key]) + " (uncertainty ±" + state.unc[key] + "%)");
+  });
+  lines.push("", "## Net outcome (Monte Carlo, 2000 seeded draws)");
+  lines.push("- Base net change: " + fmtSigned(netChange(rawValues(state))));
+  lines.push("- Mean: " + fmtSigned(stats.mean));
+  lines.push("- Median: " + fmtSigned(stats.median));
+  lines.push("- p5–p95: " + fmtSigned(stats.p5) + " … " + fmtSigned(stats.p95));
+  lines.push("- P(net reduction): " + Math.round(stats.pNegative * 100) + "%");
+  lines.push("- Most sensitive assumption: " + LABELS[topKey]);
+  lines.push("", "## Potential vs realized");
+  lines.push("- Headline potential: " + fmtSigned(proj.headline));
+  lines.push("- Realized net: " + fmtSigned(realized));
+  lines.push("", "## Counterfactual story");
+  Object.keys(STORY_LABELS).forEach(function (key) {
+    var ta = document.getElementById("story_" + key);
+    lines.push("- **" + STORY_LABELS[key] + ":** " + (ta ? ta.value : ""));
+  });
+  lines.push("", "*Toy assumptions for demonstration; not a lifecycle assessment.*");
+  return lines.join("\n");
+}
+
+function downloadReport(stats, topKey, proj, realized) {
+  var md = buildMarkdown(stats, topKey, proj, realized);
+  var blob = new Blob([md], { type: "text/markdown" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "counterfactual-assessment.md";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function updateLabels() {
@@ -416,21 +677,81 @@ function updateLabels() {
     var out = document.querySelector("[data-outunc='" + input.dataset.key + "']");
     if (out) { out.textContent = "±" + input.value + "%"; }
   });
+  document.getElementById("rampOut").textContent = document.getElementById("rampInput").value;
+  document.getElementById("horizonOut").textContent = document.getElementById("horizonInput").value;
 }
 
 function renderAll() {
   readState();
   updateLabels();
-  var stats = runMC(state);
-  renderStats(stats);
-  renderHistogram(stats);
-  renderVerdict(stats);
-  renderTornado(tornado(state));
+
+  var raw = rawValues(state);
+  var horizon = parseInt(document.getElementById("horizonInput").value, 10);
+  var rampYears = state.rampYears;
+
+  var stats = runMC(raw, state.unc);
+  var ranges = tornado(raw, state.unc);
+  var proj = rampProjection(raw, rampYears, horizon);
+  var realized = netChange(raw);
+
+  renderStats("statGrid", [
+    ["Base net change", fmtSigned(realized)],
+    ["Mean", fmtSigned(stats.mean)],
+    ["Median", fmtSigned(stats.median)],
+    ["p5 – p95", fmtSigned(stats.p5) + " … " + fmtSigned(stats.p95)],
+    ["P(net reduction)", Math.round(stats.pNegative * 100) + "%"]
+  ]);
+
+  var area = document.getElementById("histogramArea");
+  var compareIndex = document.getElementById("compareSelect").value;
+  var compareStats = null;
+  if (compareIndex !== "none") {
+    var cs = SCENARIOS[parseInt(compareIndex, 10)];
+    compareStats = runMC(rawValues(cs), cs.unc);
+    area.innerHTML = "";
+    var wrap = el("div", { class: "compare" });
+    var p1 = el("div", { class: "panel" });
+    p1.appendChild(el("div", null, SCENARIOS[current].name));
+    p1.appendChild(el("div", { class: "histogram", id: "histA" }));
+    var p2 = el("div", { class: "panel" });
+    p2.appendChild(el("div", null, cs.name));
+    p2.appendChild(el("div", { class: "histogram", id: "histB" }));
+    wrap.appendChild(p1);
+    wrap.appendChild(p2);
+    area.appendChild(wrap);
+    renderHistogram(document.getElementById("histA"), stats, "#1f6feb");
+    renderHistogram(document.getElementById("histB"), compareStats, "#7a5af8");
+  } else {
+    area.innerHTML = "";
+    area.appendChild(el("div", { class: "histogram", id: "histSingle" }));
+    renderHistogram(document.getElementById("histSingle"), stats);
+  }
+
+  renderVerdict(stats, compareStats);
+  renderTornado(ranges);
+
+  renderStats("potStats", [
+    ["Headline potential", fmtSigned(proj.headline) + "/yr"],
+    ["Realized net", fmtSigned(realized) + "/yr"],
+    ["Cumulative realized (" + horizon + "y)", fmtSigned(proj.rows[proj.rows.length - 1].cumulative)]
+  ]);
+  renderRampChart(proj);
+
+  var topKey = Object.keys(ranges).sort(function (a, b) { return ranges[b] - ranges[a]; })[0];
+  document.getElementById("downloadBtn").onclick = function () {
+    downloadReport(stats, topKey, proj, realized);
+  };
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   setDefaults(SCENARIOS[0]);
   renderScenarioGroup();
+  renderCompareOptions();
+  renderAssumptionInputs();
+  renderStoryFields();
+  document.getElementById("compareSelect").addEventListener("change", renderAll);
+  document.getElementById("horizonInput").addEventListener("input", renderAll);
+  document.getElementById("rampInput").addEventListener("input", renderAll);
   renderAll();
 });
 </script>
